@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Registro de Asistencia</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #222;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,.1);
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    header img {
+      height: 60px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 22px;
+      margin: 0;
+      flex: 1;
+    }
+    .info {
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .info label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .info input {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 6px;
+      margin-bottom: 8px;
+      width: 200px;
+      box-sizing: border-box;
+    }
+    .info > div {
+      flex: 1 1 220px;
+      min-width: 180px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      table-layout: fixed;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: center;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+    th {
+      background: #eee;
+    }
+    .total {
+      font-weight: bold;
+      background: #e0f7fa;
+    }
+    .footer {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .firma {
+      width: 40%;
+      border-top: 1px solid #000;
+      text-align: center;
+      padding-top: 4px;
+      margin: auto;
+    }
+    @media (max-width: 600px) {
+      .container { padding: 6px; }
+      table, th, td { font-size: 11px; }
+      .info input { width: 100%; }
+    }
+    @media print {
+      body { background: #fff; }
+      .container { box-shadow: none; }
+      header button, .actions { display: none; }
+      .info input, td input { border: none; background: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <img id="logo" src="Logo Aconcagua solo.png" alt="Logo Clínica del Aconcagua" />
+      <h1>REGISTRO DE ASISTENCIA<br>CLÍNICA DEL ACONCAGUA</h1>
+      <div></div>
+    </header>
+
+    <form class="info" autocomplete="off">
+      <div>
+        <label for="employee">Nombre y Apellido:</label>
+        <input id="employee" type="text" placeholder="Nombre y Apellido"/>
+      </div>
+      <div>
+        <label for="cuil">C.U.I.L.:</label>
+        <input id="cuil" type="text" placeholder="C.U.I.L."/>
+      </div>
+      <div>
+        <label for="cbu">CBU:</label>
+        <input id="cbu" type="text" placeholder="CBU"/>
+      </div>
+      <div>
+        <label for="area">Área:</label>
+        <input id="area" type="text" placeholder="Área"/>
+      </div>
+    </form>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Día</th>
+          <th>Entrada</th>
+          <th>Salida</th>
+          <th>Horas Día</th>
+          <th>Acumulado</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" class="total">TOTAL HORAS TRABAJADAS</td>
+          <td colspan="2" class="total" id="grandTotal">00:00</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="footer">
+      <div class="firma">Firma del Empleado</div>
+    </div>
+  </div>
+
+  <script>
+    // Utilidades de tiempo
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function timeToMinutes(t) {
+      if (!t) return 0;
+      let [hh, mm] = t.split(':').map(Number);
+      return hh * 60 + mm;
+    }
+    function minutesToHHMM(min) {
+      let h = Math.floor(min / 60);
+      let m = min % 60;
+      return pad(h) + ":" + pad(m);
+    }
+    function diffMinutes(start, end) {
+      if (!start || !end) return 0;
+      let s = timeToMinutes(start), e = timeToMinutes(end);
+      // Si salida < entrada, asume que cruza medianoche
+      if (e < s) e += 24 * 60;
+      return e - s;
+    }
+
+    // Construye la tabla de 31 días
+    const tbody = document.getElementById('tbody');
+    const grandTotal = document.getElementById('grandTotal');
+
+    function buildTable() {
+      tbody.innerHTML = '';
+      for (let i = 1; i <= 31; i++) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <input type="text" class="dia" placeholder="Ej: 01/09/2025" maxlength="10" style="width:100px;" autocomplete="off"/>
+          </td>
+          <td><input type="time" class="entrada" autocomplete="off"/></td>
+          <td><input type="time" class="salida" autocomplete="off"/></td>
+          <td class="horas">00:00</td>
+          <td class="acumulado">00:00</td>
+        `;
+        tbody.appendChild(tr);
+        // Recalcular al cambiar hora de entrada/salida
+        tr.querySelectorAll('.entrada, .salida').forEach(inp => inp.addEventListener('input', recalc));
+      }
+    }
+
+    function recalc() {
+      let running = 0;
+      tbody.querySelectorAll('tr').forEach(tr => {
+        const entrada = tr.querySelector('.entrada').value;
+        const salida = tr.querySelector('.salida').value;
+        const mins = diffMinutes(entrada, salida);
+        running += mins;
+        tr.querySelector('.horas').textContent = minutesToHHMM(mins);
+        tr.querySelector('.acumulado').textContent = minutesToHHMM(running);
+      });
+      grandTotal.textContent = minutesToHHMM(running);
+    }
+
+    buildTable();
+  </script>
+</body>
+</html>
